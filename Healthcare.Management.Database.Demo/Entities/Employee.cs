@@ -17,5 +17,11 @@ namespace Healthcare.Management.Database.Demo.Entities
         public Department Department { get; set; }
 
         public ICollection<Appointment> Appointments { get; set; } = [];
+
+        public override string ToString()
+        {
+            return $"{string.Concat(FirstName, ' ', LastName)} - {JobTitle} ({Department.Name})";
+        }
+
     }
 }

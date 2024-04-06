@@ -12,7 +12,17 @@ namespace Healthcare.Management.Database.Demo
 
                 //GetTotalAppointmentsForDepartments(context);
 
-                EmployeePerformanceSummary(context);
+                //EmployeePerformanceSummary(context);
+
+                //RunBirthdayCelebrationsView(context);
+
+                //RunTopSalaryEmployeesView(context);
+
+                //RunCurrentAppointmentsView(context);
+
+                //SearchDoctorBy("JAM", context);
+
+                RunPatientsWithCheckupCosts(context);
 
             }
 
@@ -105,11 +115,16 @@ namespace Healthcare.Management.Database.Demo
                                              into grouped
                                              select new
                                              {
-                                                 Employee = string.Concat(grouped.Key.FirstName, ' ', grouped.Key.LastName),
+                                                 Employee = string.Concat(
+                                                     grouped.Key.FirstName, ' ', grouped.Key.LastName
+                                                   ),
                                                  TotalAppointments = grouped.Count(x => x.appointment != null),
                                                  EmployeeJobTitle = grouped.Key.JobTitle,
-                                                 Patients = grouped.Select(x =>
-                                                    string.Concat(x.patient.FirstName, ' ', x.patient.LastName)).ToList()
+                                                 Patients = grouped.Select(
+                                                     x => string.Concat(
+                                                         x.patient.FirstName, ' ', x.patient.LastName)
+                                                     )
+                                                 .ToList()
                                              };
             foreach (var empPerformance in employeePerformanceSummary)
                 Console.WriteLine(
@@ -119,6 +134,121 @@ namespace Healthcare.Management.Database.Demo
 
 
 
+        }
+
+        public static void RunBirthdayCelebrationsView(ApplicationDbContext context)
+        {
+            var query = from employee in context.Employees
+                        where employee.DateOfBirth.Month == DateTime.Now.Month
+                        select new
+                        {
+                            EmployeeId = employee.Id,
+                            EmployeeName = string.Concat(employee.LastName, ' ', employee.FirstName),
+                            DateOfBirth = employee.DateOfBirth
+                        };
+
+            foreach (var employee in query)
+                Console.WriteLine($"" +
+                    $"\nEmployeeId: {employee.EmployeeId}" +
+                    $"\nEmployeeName: {employee.EmployeeName}" +
+                    $"\nDateOfBirth: {employee.DateOfBirth}");
+        }
+
+        public static void RunTopSalaryEmployeesView(ApplicationDbContext context)
+        {
+            var query = from employee in context.Employees
+                        where employee.Salary == (context.Employees.Max(x => x.Salary))
+                        select new
+                        {
+                            employee.Id,
+                            employee.JobTitle,
+                            employee.Salary,
+                            EmployeeName = string.Concat(employee.FirstName, ' ', employee.LastName)
+                        };
+
+            foreach (var employee in query)
+                Console.WriteLine($"" +
+                    $"\nEmployeeId: {employee.Id}" +
+                    $"\nEmployeeName: {employee.EmployeeName}" +
+                    $"\nSalary: {employee.Salary:C}" +
+                    $"\nJobTitle: {employee.JobTitle}");
+
+        }
+
+        public static void RunCurrentAppointmentsView(ApplicationDbContext context)
+        {
+            var query = from appointment in context.Appointments
+                        join employee in context.Employees
+                        on appointment.EmployeeId equals employee.Id
+                        join patient in context.Patients
+                        on appointment.PatientId equals patient.Id
+                        where appointment.AppointmentDate == DateOnly.FromDateTime(DateTime.Now)
+                        select new
+                        {
+                            appointment.Id,
+                            appointment.AppointmentDate,
+                            appointment.AppointmentTime,
+                            appointment.Paid,
+                            EmployeeName = string.Concat(employee.FirstName, ' ', employee.LastName),
+                            Patient = string.Concat(patient.FirstName, ' ', patient.LastName)
+                        };
+
+            foreach (var appointment in query)
+                Console.WriteLine($"" +
+                    $"\nAppointmentId: {appointment.Id}" +
+                    $"\nAppointmentDate: {appointment.AppointmentDate}" +
+                    $"\nAppointmentTime: {appointment.AppointmentTime}" +
+                    $"\nPaid: {appointment.Paid}" +
+                    $"\nPatient: {appointment.Patient}" +
+                    $"\nDoctor: {appointment.EmployeeName}");
+
+        }
+
+        public static void SearchDoctorBy(string doctorName, ApplicationDbContext context)
+        {
+            var doctors = context.Employees
+                .Where(e => e.JobTitle == "Doctor" &&
+                    (
+                        e.FirstName!.ToLower().Contains(doctorName.ToLower()) ||
+                        e.LastName!.ToLower().Contains(doctorName.ToLower())))
+                .ToList();
+
+            foreach (var employee in doctors)
+            {
+                Console.WriteLine(employee.FirstName);
+            }
+
+        }
+
+        public static void RunPatientsWithCheckupCosts(ApplicationDbContext context)
+        {
+            var query = from employee in context.Employees
+                        join department in context.Departments
+                        on employee.DepartmentId equals department.Id
+                        join appointment in context.Appointments
+                        on employee.Id equals appointment.EmployeeId
+                        join patient in context.Patients
+                        on appointment.PatientId equals patient.Id
+                        select new
+                        {
+                            Patient = string.Concat(patient.FirstName, " ", patient.LastName),
+                            Doctor = string.Concat(employee.FirstName, " ", employee.LastName),
+                            appointment.AppointmentDate,
+                            appointment.AppointmentTime,
+                            appointment.Paid,
+                            patient.Gender,
+                            CostofDiagnosis = department.CheckCost
+                        };
+
+            foreach (var item in query)
+                Console.WriteLine($"" +
+                    $"\nPatient: {item.Patient}" +
+                       $"\nDoctor:  {item.Patient}" +
+                    $"\nAppointmentTime: {item.AppointmentTime}" +
+                    $"\nAppointmentDate: {item.AppointmentDate}" +
+                    $"\nGender: {item.Gender}" +
+                    $"\nPaid: {item.Paid}" +
+                       $"\nCostofDiagnosis: {item.CostofDiagnosis}");
         }
 
     }
