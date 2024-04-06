@@ -18,7 +18,7 @@ namespace Healthcare.Management.Database.Demo.Data.Config
 
             builder.Property(x => x.CheckCost)
                 .HasPrecision(18, 2)
-                .IsRequired();
+                .IsRequired(false);
 
             builder.ToTable("Departments");
         }
