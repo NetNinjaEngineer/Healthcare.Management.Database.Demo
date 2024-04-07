@@ -129,28 +129,28 @@ namespace Healthcare.Management.Database.Demo
 
             var fluentSyntax = context.Appointments.Join(
                     context.Employees,
-                    appointment => appointment.Id,
+                    appointment => appointment.EmployeeId,
                     employee => employee.Id,
                     (appointment, employee) => new { appointment, employee }
                 ).Join(
                     context.Patients,
-                    empAppointments => empAppointments.appointment.Id,
+                    empAppointments => empAppointments.appointment.PatientId,
                     patient => patient.Id,
                     (empAppointments, patient) => new { empAppointments, patient }
                 ).Where(
                     employee =>
                         employee.empAppointments.employee.JobTitle!.ToLower() == "doctor"
-                ).GroupBy(employee =>
+                ).GroupBy(x =>
                     new
                     {
-                        employee.empAppointments.employee.FirstName,
-                        employee.empAppointments.employee.LastName,
-                        employee.empAppointments.employee.JobTitle
+                        x.empAppointments.employee.FirstName,
+                        x.empAppointments.employee.LastName,
+                        x.empAppointments.employee.JobTitle
                     },
                     (key, group) => new
                     {
                         Employee = string.Concat(key.FirstName, " ", key.LastName),
-                        TotalAppointments = group.Count(x => x.empAppointments.appointment != null),
+                        TotalAppointments = group.Select(x => x.empAppointments.appointment).Count(),
                         EmployeeJobTitle = key.JobTitle,
                         Patients = string.Join(", ",
                             group.Select(x =>
@@ -161,7 +161,7 @@ namespace Healthcare.Management.Database.Demo
                     }
                 );
 
-            foreach (var empPerformance in employeePerformanceSummary)
+            foreach (var empPerformance in fluentSyntax)
                 Console.WriteLine(
                     $"\n{empPerformance.Employee} ({empPerformance.EmployeeJobTitle})" +
                     $"\nTotalAppointments: {empPerformance?.TotalAppointments}" +
