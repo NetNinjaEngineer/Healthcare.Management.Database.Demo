@@ -12,7 +12,7 @@ namespace Healthcare.Management.Database.Demo
 
                 //GetTotalAppointmentsForDepartments(context);
 
-                //EmployeePerformanceSummary(context);
+                EmployeePerformanceSummary(context);
 
                 //RunBirthdayCelebrationsView(context);
 
@@ -22,7 +22,7 @@ namespace Healthcare.Management.Database.Demo
 
                 //SearchDoctorBy("JAM", context);
 
-                RunPatientsWithCheckupCosts(context);
+                //RunPatientsWithCheckupCosts(context);
 
             }
 
@@ -126,6 +126,41 @@ namespace Healthcare.Management.Database.Demo
                                                      )
                                                  .ToList()
                                              };
+
+            var fluentSyntax = context.Appointments.Join(
+                    context.Employees,
+                    appointment => appointment.Id,
+                    employee => employee.Id,
+                    (appointment, employee) => new { appointment, employee }
+                ).Join(
+                    context.Patients,
+                    empAppointments => empAppointments.appointment.Id,
+                    patient => patient.Id,
+                    (empAppointments, patient) => new { empAppointments, patient }
+                ).Where(
+                    employee =>
+                        employee.empAppointments.employee.JobTitle!.ToLower() == "doctor"
+                ).GroupBy(employee =>
+                    new
+                    {
+                        employee.empAppointments.employee.FirstName,
+                        employee.empAppointments.employee.LastName,
+                        employee.empAppointments.employee.JobTitle
+                    },
+                    (key, group) => new
+                    {
+                        Employee = string.Concat(key.FirstName, " ", key.LastName),
+                        TotalAppointments = group.Count(x => x.empAppointments.appointment != null),
+                        EmployeeJobTitle = key.JobTitle,
+                        Patients = string.Join(", ",
+                            group.Select(x =>
+                                string.Concat(
+                                    x.patient.FirstName, " ", x.patient.LastName)
+                            )
+                        )
+                    }
+                );
+
             foreach (var empPerformance in employeePerformanceSummary)
                 Console.WriteLine(
                     $"\n{empPerformance.Employee} ({empPerformance.EmployeeJobTitle})" +
@@ -193,12 +228,41 @@ namespace Healthcare.Management.Database.Demo
                             Patient = string.Concat(patient.FirstName, ' ', patient.LastName)
                         };
 
-            foreach (var appointment in query)
+            var fluentSyntax = context.Appointments
+                .Join(
+                    context.Employees,
+                    appointment => appointment.Id,
+                    employee => employee.Id,
+                    (appointment, employee) => new { appointment, employee }
+                )
+                .Join(
+                    context.Patients,
+                    appointment => appointment.appointment.Id,
+                    patient => patient.Id,
+                    (empAppointments, patient) => new { empAppointments, patient }
+                )
+                .Where(appointDate =>
+                    appointDate.empAppointments.appointment
+                    .AppointmentDate == DateOnly.FromDateTime(DateTime.Now)
+                )
+                .Select(x => new
+                {
+                    AppointmentId = x.empAppointments.appointment.Id,
+                    Date = x.empAppointments.appointment.AppointmentDate,
+                    Time = x.empAppointments.appointment.AppointmentTime,
+                    IsPaid = x.empAppointments.appointment.Paid == "PAID" ? true : false,
+                    EmployeeName = string.Concat(x.empAppointments.employee.FirstName, ' ',
+                        x.empAppointments.employee.LastName),
+                    Patient = string.Concat(x.patient.FirstName, ' ', x.patient.LastName)
+                });
+
+
+            foreach (var appointment in fluentSyntax)
                 Console.WriteLine($"" +
-                    $"\nAppointmentId: {appointment.Id}" +
-                    $"\nAppointmentDate: {appointment.AppointmentDate}" +
-                    $"\nAppointmentTime: {appointment.AppointmentTime}" +
-                    $"\nPaid: {appointment.Paid}" +
+                    $"\nAppointmentId: {appointment.AppointmentId}" +
+                    $"\nAppointmentDate: {appointment.Date}" +
+                    $"\nAppointmentTime: {appointment.Time}" +
+                    $"\nPaid: {appointment.IsPaid}" +
                     $"\nPatient: {appointment.Patient}" +
                     $"\nDoctor: {appointment.EmployeeName}");
 
